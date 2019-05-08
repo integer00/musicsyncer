@@ -1,5 +1,7 @@
 package com.example.lib.Utils;
 
+import com.example.lib.MyServer;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,30 +17,31 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class Helper {
+public class Tools {
+
 
     @NotNull
     public static String bytesToHex(@NotNull byte[] hash) {
-        StringBuffer hexString = new StringBuffer();
+        StringBuilder hexString = new StringBuilder();
         for (int i = 0; i < hash.length; i++) {
             String hex = Integer.toHexString(0xff & hash[i]);
-            if(hex.length() == 1) hexString.append('0');
+            if (hex.length() == 1) hexString.append('0');
             hexString.append(hex);
         }
         return hexString.toString();
     }
 
     @Nullable
-    public static String getEtag(@NotNull Path fc){
-        try(InputStream is = Files.newInputStream(fc)) {
-            byte buffer[] = new byte[(int)Files.size(fc)];
+    public static String getEtag(@NotNull Path fc) {
+        try (InputStream is = Files.newInputStream(fc)) {
+            byte buffer[] = new byte[(int) Files.size(fc)];
             is.read(buffer);
 
 
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
-            byte [] hash = digest.digest(buffer);
-            return Helper.bytesToHex(hash).substring(0,32);
+            byte[] hash = digest.digest(buffer);
+            return bytesToHex(hash).substring(0, 32);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         } catch (FileNotFoundException e) {
@@ -50,7 +53,7 @@ public class Helper {
         return null;
     }
 
-    public static ByteBuffer getBB(Path p){
+    public static ByteBuffer getBB(Path p) {
 
         try {
             FileChannel ch = (FileChannel) Files.newByteChannel(p);
@@ -69,7 +72,7 @@ public class Helper {
 
 
 //        //todo returning to many times
-        if(Files.isDirectory(fc)){
+        if (Files.isDirectory(fc)) {
             return "text/plain";
         }
 
@@ -97,4 +100,11 @@ public class Helper {
         return "text/plain";
     }
 
+    public static void FireEvent(String data) {
+
+        if (MyServer.listener != null) {
+            MyServer.listener.sendData(data);
+        }
+    }
 }
+

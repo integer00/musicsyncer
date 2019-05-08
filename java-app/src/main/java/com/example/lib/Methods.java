@@ -1,24 +1,5 @@
 package com.example.lib;
 
-/*
-
-    do head             OK
-    do uri              OK
-    do content-length   OK
-    do mime             OK
-    do parital-request  need fix
-    do get              rewrite
-    do put              OK
-    do delete           OK
-    do options:         add dynamic list to value for "ALLOW":
-    do xml              OK
-        Make fabric for xml
-    do propfind         OK
-    do mkcol            OK
-    do etag             OK
-
- */
-
 import com.example.lib.Utils.*;
 
 import org.jetbrains.annotations.NotNull;
@@ -67,19 +48,18 @@ import org.nanohttpd.protocols.http.response.Response;
 import org.nanohttpd.protocols.http.response.Status;
 import org.nanohttpd.protocols.http.request.Method;
 
-
 public class Methods {
 
     //todo add filechannels for files
     //todo fix partial lenght
     //todo rewrite for fileInput and fileOutput transferTo() for put
     //todo close all streams
+    //todo elistener wrap
 
 
-    static private Response res;
+    public Response res;
 
-
-    public static Response doOptions() {
+    public Response doOptions() {
 
         res = Response.newFixedLengthResponse(Status.OK, NanoHTTPD.MIME_HTML, "");
 
@@ -96,7 +76,7 @@ public class Methods {
         return res;
     }
 
-    public static Response doGet(String uri, Map<String, String> headers, @NotNull Path rootDir, @NotNull IHTTPSession session) {
+    public Response doGet(String uri, Map<String, String> headers, @NotNull Path rootDir, @NotNull IHTTPSession session) {
 
         Path absPath = Paths.get(rootDir.toString().concat(uri));
 
@@ -119,8 +99,10 @@ public class Methods {
             //todo channel\bytearray
             Long fs = Files.size(absPath);
 
-            String mimeType = Helper.getMimeType(absPath);
-            String etag = Helper.getEtag(absPath);
+
+
+            String mimeType = Tools.getMimeType(absPath);
+            String etag = Tools.getEtag(absPath);
 
             byte[] buffer = new byte[fs.intValue()];
             fc.read(buffer);
@@ -146,6 +128,10 @@ public class Methods {
                 res.addHeader("Content-Length", "0");
 
                 MyServer.LOG.info("HEAD:  " + uri);
+
+                MyServer.listener.sendData("HEAD:  " + uri + "\n") ;
+//                MyServer.setMessage("HEAD:  " + uri);
+
 
                 return res;
             }
@@ -192,8 +178,12 @@ public class Methods {
 //            res.addHeader("Content-Range", "bytes " + range_start + "-" + range_stop + "/" + file.length());
                 res.addHeader("Content-Range", "bytes " + b.get("min_range") + "-" + (b.get("max_range")-1) + "/" + Files.size(absPath));
 
+                MyServer.listener.sendData("GET: " + uri + "\n") ;
+
                 return res;
             }
+
+            Tools.FireEvent("GET:  " + uri + "\n"); ;
 
 
             return res;
@@ -208,7 +198,7 @@ public class Methods {
 
     }
 
-    public static Response doDelete(String uri, @NotNull Path rootDir) {
+    public Response doDelete(String uri, @NotNull Path rootDir) {
 
         //DELETE /file.html HTTP/1.1
         //If a DELETE method is successfully applied, there are several response status codes possible:
@@ -229,6 +219,8 @@ public class Methods {
                         public FileVisitResult visitFile(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
                             Files.delete(path);
                             MyServer.LOG.info("DELETE: " + path);
+                            MyServer.listener.sendData("DELETE:  " + path + "\n") ;
+
 
                             return FileVisitResult.CONTINUE;
                         }
@@ -237,6 +229,8 @@ public class Methods {
                         public FileVisitResult postVisitDirectory(Path directory, IOException ioException) throws IOException {
                             Files.delete(directory);
                             MyServer.LOG.info("DELETE: " + directory);
+                            MyServer.listener.sendData("DELETE:  " + directory + "\n") ;
+
 
                             return FileVisitResult.CONTINUE;
                         }
@@ -274,7 +268,7 @@ public class Methods {
         return res;
     }
 
-    public static Response doPut(String uri, @NotNull Path rootDir, IHTTPSession session) {
+    public Response doPut(String uri, @NotNull Path rootDir, IHTTPSession session) {
 
         //If the target resource does not have a current representation and the PUT request
         // successfully creates one, then the origin server must inform
@@ -297,7 +291,7 @@ public class Methods {
             Path payload_path = Paths.get(m.get("content"));
 
             FileChannel ch1 = (FileChannel) Files.newByteChannel(payload_path);
-            ByteBuffer m1 = Helper.getBB(payload_path);
+            ByteBuffer m1 = Tools.getBB(payload_path);
 
             byte[] payload_result;
 
@@ -315,7 +309,10 @@ public class Methods {
                     Files.write(filename_path, payload_result, StandardOpenOption.CREATE_NEW);
 
                     MyServer.LOG.info("creating " + filename_path.toString());
-                    res = Response.newFixedLengthResponse(Status.CREATED, null, "");
+                    MyServer.listener.sendData("PUT:  " + filename_path.toString() + "\n") ;
+
+
+                res = Response.newFixedLengthResponse(Status.CREATED, null, "");
                     res.addHeader("Content-Location", uri);
 
                     return res;
@@ -323,13 +320,15 @@ public class Methods {
             } else if (Files.exists(filename_path)) {
 
 //                FileChannel ch2 = (FileChannel) Files.newByteChannel(filename_path);
-                ByteBuffer m2 = Helper.getBB(filename_path);
+                ByteBuffer m2 = Tools.getBB(filename_path);
 
                 Integer s = m2.compareTo(m1);
 
                 if (s.equals(0)) {
                     //identical, exit
                     MyServer.LOG.info(filename_path.toString() + " identical, skipping");
+                    MyServer.listener.sendData(filename_path.toString() + " identical, skipping" + "\n") ;
+
 
                     res = Response.newFixedLengthResponse(Status.NO_CONTENT, null, "");
                     res.addHeader("Content-Location", uri);
@@ -341,6 +340,8 @@ public class Methods {
 
                     Files.write(filename_path, payload_result, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
                     MyServer.LOG.info("creating " + filename_path.toString());
+                    MyServer.listener.sendData("PUT:  " + filename_path.toString() + "\n") ;
+
 
                     res = Response.newFixedLengthResponse(Status.OK, null, "");
                     res.addHeader("Content-Location", uri);
@@ -361,7 +362,7 @@ public class Methods {
         return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, NanoHTTPD.MIME_HTML, "Cannot put content");
     }
 
-    public static Response doPropfind(final String uri, final Map<String, String> headers, @NotNull final Path rootDir) {
+    public Response doPropfind(final String uri, final Map<String, String> headers, @NotNull final Path rootDir) {
 
         final Path path_root = Paths.get(rootDir.toString().concat(uri));
 
@@ -410,8 +411,10 @@ public class Methods {
                     public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException {
 
                         MyServer.LOG.info("trogayu previsit " + path);
+                        MyServer.listener.sendData("Visiting directory: " + path + "\n") ;
 
-                        //todo move to helper
+
+                        //todo move to tools
                         Element response = d.createElement("response");
                         rootElement.appendChild(response);
 
@@ -429,7 +432,7 @@ public class Methods {
                         propstat.appendChild(prop);
 
                         Element getcontenttype = d.createElement("getcontenttype");
-                        //                getcontenttype.appendChild(d.createTextNode(Helper.getMimeType(new File(filename.toString()))));
+                        //                getcontenttype.appendChild(d.createTextNode(Tools.getMimeType(new File(filename.toString()))));
                         prop.appendChild(getcontenttype);
 
                         Element getlastmodified = d.createElement("getlastmodified");
@@ -458,6 +461,8 @@ public class Methods {
                     @Override
                     public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
                         MyServer.LOG.info("trogayu visit " + path);
+                        MyServer.listener.sendData("Visiting file: " + path + "\n") ;
+
 
                         Element response = d.createElement("response");
                         rootElement.appendChild(response);
@@ -479,7 +484,7 @@ public class Methods {
                         propstat.appendChild(prop);
 
                         Element getcontenttype = d.createElement("getcontenttype");
-                        getcontenttype.appendChild(d.createTextNode(Helper.getMimeType(path)));
+                        getcontenttype.appendChild(d.createTextNode(Tools.getMimeType(path)));
                         prop.appendChild(getcontenttype);
 
                         Element getlastmodified = d.createElement("getlastmodified");
@@ -511,19 +516,6 @@ public class Methods {
                         rootElement.appendChild(response);
 
                         Element href = d.createElement("href");
-                        String s = "";
-                        //if uri is root
-//                        if (uri.equals("/")) {
-//                            s = "/";
-//                            //if uri is path to something
-//                        } else if (uri.endsWith("/")) {
-//                            s = uri;
-//
-//                            //else uri ???
-//                        } else {
-//                            s = uri + "/";
-//                        }
-                        //path.getFileName().toString()
                         href.appendChild(d.createTextNode(path.getFileName().toString()));
                         response.appendChild(href);
 
@@ -552,14 +544,14 @@ public class Methods {
 
             transformer.transform(domSource, result);
 
-
+            //todo ??
             ByteArrayInputStream bis = new ByteArrayInputStream(os.toByteArray());
             Long size = (long) os.toByteArray().length;
 //
 //            StreamResult consoleResult = new StreamResult(System.out);
 //            transformer.transform(domSource, consoleResult);
 
-            return res = Response.newFixedLengthResponse(Status.MULTI_STATUS, "Application/xml", new ByteArrayInputStream(os.toByteArray()), size);
+            return res = Response.newFixedLengthResponse(Status.MULTI_STATUS, "Application/xml", bis, size);
 
         } catch (TransformerConfigurationException e) {
             e.printStackTrace();
@@ -573,7 +565,7 @@ public class Methods {
         return Response.newFixedLengthResponse(Status.NOT_FOUND, NanoHTTPD.MIME_HTML, "");
     }
 
-    public static Response doMkcol(String uri, @NotNull Path rootDir) {
+    public Response doMkcol(String uri, @NotNull Path rootDir) {
 
         // Responses to this method MUST NOT be cached.
 

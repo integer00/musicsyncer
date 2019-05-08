@@ -18,24 +18,22 @@ package com.example.musicsyncer;
 
 
 import android.Manifest;
-import android.app.Activity;
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.os.Environment;
+
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.os.EnvironmentCompat;
+
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
+import android.support.v7.widget.Toolbar;
+import android.text.method.ScrollingMovementMethod;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.lib.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -43,15 +41,20 @@ import java.nio.file.Paths;
 
 public class MainActivity extends AppCompatActivity {
 
-    Button start_btn,stop_btn;
-    TextView txtStatus;
+    TextView txtStatus, messages_txtBody;
 
-
-
-    String TAG = "Info:";
 
     // Storage Permissions
     private static final int MY_PERMISSIONS_REQUEST = 1;
+
+    Path rootDir = Paths.get("/storage/emulated/0/sync");
+//        File[] rootDir = this.getExternalFilesDirs(Environment.DIRECTORY_DOCUMENTS);
+
+
+    MyServer server = new MyServer("0.0.0.0", 8080, rootDir);
+
+
+
 
 
 
@@ -59,71 +62,101 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(myToolbar);
+
         txtStatus = (TextView) findViewById(R.id.txtStatus);
+        messages_txtBody = (TextView) findViewById(R.id.messages_txtBody);
+        messages_txtBody.setMovementMethod(new ScrollingMovementMethod());
 
 
-        Path rootDir = Paths.get("/storage/emulated/0");
-//        File[] rootDir = this.getExternalFilesDirs(Environment.DIRECTORY_DOCUMENTS);
+        Button start_btn = findViewById(R.id.start_btn);
+        Button stop_btn = findViewById(R.id.stop_btn);
+
+        start_btn.setOnClickListener(startServer);
+        stop_btn.setOnClickListener(stopServer);
 
 
-        MyServer server = new MyServer("0.0.0.0", 8080, rootDir);
+        ActivityCompat.requestPermissions(this, new String[]{
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.INTERNET
+        }, MY_PERMISSIONS_REQUEST);
+
+
+        //get event message
+        server.setEventListener(new MyServer.EventListener() {
+
+            @Override
+            public void sendData(String data) {
+
+                //starting thread
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        messages_txtBody.append(data);
+                    }
+                });
+
+            }
+        });
+
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu, menu);
+        return true;
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_settings:
+                // User chose the "Settings" item, show the app settings UI...
+                return true;
+
+            default:
+                // If we got here, the user's action was not recognized.
+                // Invoke the superclass to handle it.
+                return super.onOptionsItemSelected(item);
+
+        }
+    }
+
+
+
+
+    View.OnClickListener startServer = v -> {
 
         try {
-            server.start();
+
+            if (!server.isAlive()) {
+
+                server.start(5000, false);
+                txtStatus.append("Listening on " + server.hostname + " on port " + server.getListeningPort() + "\n");
+                txtStatus.append("rootdir is " + server.rootDir);
+                messages_txtBody.append("Server started. \n");
+
+            } else{
+                messages_txtBody.append("Server is already started. \n");
+//                messages_txtBody.append(MyServer.getMessage());
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-//        if(checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED){
-//            Log.d("PERM","Permission is granted");
-//        }else {
-            ActivityCompat.requestPermissions(this, new String[]{
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    Manifest.permission.INTERNET
-            },MY_PERMISSIONS_REQUEST);
-            Log.d("PERM","asking for permission");
-//        }
-
-        start_btn = new Button(this);
-        stop_btn = new Button(this);
-
-        start_btn = (Button)findViewById(R.id.start_btn);
-//
-//        start_btn.setOnClickListener(startServer);
-//        stop_btn.setOnClickListener(stopServer);
-
-    }
+    };
 
 
-//    View.OnClickListener startServer = new View.OnClickListener(){
-//
-//        @Override
-//        public void onClick(View v) {
-//
-//
-//            try {
-//                server.start();
-//
-//                if(server.isAlive()){
-//                    start_btn.setEnabled(false);
-//                }
-//
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//    };
-//
-//    View.OnClickListener stopServer = new View.OnClickListener(){
-//
-//        @Override
-//        public void onClick(View v) {
-//
-//            server.stop();
-//            if(!server.isAlive()){
-//                start_btn.setEnabled(true);
-//            }
-//        }
-//    };
+    View.OnClickListener stopServer = v -> {
+
+        if (server.isAlive()){
+            server.stop();
+            txtStatus.setText("Server has been stoped");
+            messages_txtBody.append("Server stopped. \n");
+        }
+
+    };
 
 }

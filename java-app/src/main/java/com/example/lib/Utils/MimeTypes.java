@@ -24,7 +24,7 @@ import java.util.Properties;
 import java.util.StringTokenizer;
 
 /**
- * Helper class to get mimetype
+ * Tools class to get mimetype
  *
  * @author jcompagner
  */
