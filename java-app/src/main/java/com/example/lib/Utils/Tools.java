@@ -33,6 +33,7 @@ public class Tools {
 
     @Nullable
     public static String getEtag(@NotNull Path fc) {
+
         try (InputStream is = Files.newInputStream(fc)) {
             byte buffer[] = new byte[(int) Files.size(fc)];
             is.read(buffer);
@@ -55,8 +56,7 @@ public class Tools {
 
     public static ByteBuffer getBB(Path p) {
 
-        try {
-            FileChannel ch = (FileChannel) Files.newByteChannel(p);
+        try (FileChannel ch = (FileChannel) Files.newByteChannel(p)) {
 
             ByteBuffer bb = ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
 
@@ -76,10 +76,8 @@ public class Tools {
             return "text/plain";
         }
 
-        try {
+        try (InputStream is = Files.newInputStream(fc)){
 
-
-            InputStream is = Files.newInputStream(fc);
             byte buffer[] = new byte[11];
             is.read(buffer);
 

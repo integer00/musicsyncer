@@ -292,6 +292,9 @@ public class Methods {
 
             FileChannel ch1 = (FileChannel) Files.newByteChannel(payload_path);
             ByteBuffer m1 = Tools.getBB(payload_path);
+            long size = ch1.size();
+
+            ch1.close();
 
             byte[] payload_result;
 
@@ -299,7 +302,7 @@ public class Methods {
             if (payload_path.toString().contentEquals("")) {
                 payload_result = new byte[0];
             } else {
-                payload_result = new byte[(int) ch1.size()];
+                payload_result = new byte[(int) size];
             }
 
             if (!Files.exists(filename_path)) {
