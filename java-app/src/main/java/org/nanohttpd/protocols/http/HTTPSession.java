@@ -156,6 +156,18 @@ public class HTTPSession implements IHTTPSession {
 
             // Decode parameters from the URI
             int qmi = uri.indexOf('?');
+
+            // path traversing is bad
+            if ((uri.toLowerCase()).contains("%2e") ||
+                    (uri.toLowerCase()).contains("%2f")) {
+                uri = uri.replaceAll("%2e|%2f|%2E|%2F","");
+            }
+            //todo fix actual double-dot it filename
+            //hard-code .. for now
+            if (uri.contains("..")) {
+                uri = uri.replace("..","");
+            }
+
             if (qmi >= 0) {
                 decodeParms(uri.substring(qmi + 1), parms);
                 uri = NanoHTTPD.decodePercent(uri.substring(0, qmi));

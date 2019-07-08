@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+
+    <EditTextPreference
+
+
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:defaultValue="0.0.0.0"
+        android:key="ip"
+        android:selectAllOnFocus="true"
+        android:singleLine="false"
+        android:summary="Setting listen ip address"
+        android:title="ip address" />
+    <EditTextPreference
+        android:defaultValue="internal"
+        android:key="webroot"
+        android:selectAllOnFocus="true"
+        android:singleLine="false"
+        android:title="webroot"
+        android:visibility="visible" />
+
+
+</PreferenceScreen>

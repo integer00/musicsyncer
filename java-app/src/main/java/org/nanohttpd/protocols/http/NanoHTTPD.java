@@ -481,6 +481,9 @@ public abstract class NanoHTTPD {
             decoded = URLDecoder.decode(str, "UTF8");
         } catch (UnsupportedEncodingException ignored) {
             NanoHTTPD.LOG.log(Level.WARNING, "Encoding not supported, ignored", ignored);
+        } catch (IllegalArgumentException e){
+            NanoHTTPD.LOG.log(Level.WARNING, "Wrong % trailing, returning empty", e);
+            return "";
         }
         return decoded;
     }

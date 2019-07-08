@@ -10,7 +10,7 @@ public class test{
 
         String hostname = "127.0.0.1";
         int port = 8080;
-        Path rootDir = Paths.get("/Users/kdm/test/webroot");
+        Path rootDir = Paths.get("/Users/integer/test/webroot");
 
 
         //create server

@@ -38,6 +38,7 @@ public class MyServer extends NanoHTTPD {
         this.rootDir = rootDir;
         this.listener = null;
 
+        //fixme fix null path
         if (rootDir == null ) {
             this.rootDir = Paths.get("").getFileName();
         }
